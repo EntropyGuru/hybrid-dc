@@ -1,0 +1,21 @@
+az account list -o table
+az account set --subscription <id Twojej subskrypcji>
+az account list -o table
+
+az group create --location westeurope --name cloud
+
+az network vnet create --name cloud-vnet --location westeurope --address-prefixes 10.0.0.0/8 --subnet-name default --resource-group cloud
+
+az network vnet subnet create --vnet-name cloud-vnet --address-prefixes 10.0.1.0/24 --name GatewaySubnet --resource-group cloud
+
+az deployment group create --resource-group cloud --name CHR001 --template-file template.json --parameters vpnType=RouteBased virtualNetworkName=cloud-vnet gatewayPublicIPName=cloud-gateway-pip gatewayName=cloud-gateway gatewaySku=VpnGw1
+
+az network local-gateway create --name onprem-local-gw --gateway-ip-address <adres publiczny IP VPN GW w onprem> --local-address-prefixes 192.168.0.0/16 --location westeurope --resource-group cloud --no-wait
+
+az network vpn-connection create --name cloud-2-onprem --shared-key "aabbcc" --vnet-gateway1 <resource ID GW cloud> --vnet-gateway2 <resource ID GW onprem> --resource-group cloud --location westeurope
+
+az vm create --name webapp --image UbuntuLTS --admin-username master --generate-ssh-keys --public-ip-address "" --vnet-name cloud-vnet --subnet default --custom-data cloud-init.txt  --location westeurope --resource-group cloud 
+
+az vm create --name someapp --image UbuntuLTS --admin-username master --admin-password "P@ssw0RD_2020" --vnet-name onprem-network --subnet default  --location westeurope --resource-group onprem
+
+az monitor log-analytics workspace create --workspace-name hybrid-cloud-log-analytics-mds --location westeurope --resource-group cloud
